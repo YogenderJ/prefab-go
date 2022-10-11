@@ -1,0 +1,15 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo 'Checking go version...'
+      - go version
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Compiling the Go code
+      - go build server.go
+artifacts:
+  files:
+    - '**/*'
