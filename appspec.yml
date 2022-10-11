@@ -1,0 +1,18 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ubuntu/codepipeline/go
+    overwrite: true
+hooks:
+  BeforeInstall:
+    - location: Dependency_Scripts/install_dependencies.sh
+    - location: Scripts/rmBeforeInstall.sh
+      timeout: 300
+      runas: root
+  AfterInstall:
+    - location: Scripts/startApplication.sh
+      timeout: 600
+      runas: root
+
+

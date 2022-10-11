@@ -1,0 +1,16 @@
+[Unit]
+Description=My-Go-service
+After=network.target
+
+[Service]
+ExecStart= /home/ubuntu/gitlab/go/server
+Restart=always
+RestartSec=500ms
+StartLimitInterval=0
+User=nobody
+Group=nogroup
+Environment=PATH=/usr/bin:/usr/local/bin
+WorkingDirectory=/home/ubuntu/test/go
+
+[Install]
+WantedBy=multi-use.target

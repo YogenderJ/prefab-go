@@ -1,0 +1,92 @@
+image: golang:latest
+
+stages:
+    - build
+    - test
+    - deploy
+    - service
+
+variables:
+    KEY_NAME: "$CI_PIPELINE_IID.zip"
+    BUCKET_NAME: "$CI_PROJECT_NAME-artifact" 
+    BUCKET_DEPLOY_NAME: "$CI_PROJECT_NAME"
+    APPLICATION_NAME: "$CI_PROJECT_NAME" 
+
+
+workflow:
+    rules:
+        - if: $CI_COMMIT_REF_NAME == "main"
+          variables: 
+              DEPLOYMENTGROUP_NAME: "DG-$CI_PROJECT_NAME"
+        - if: $CI_COMMIT_REF_NAME != "main"
+          variables: 
+              DEPLOYMENTGROUP_NAME: "DG-$CI_PROJECT_NAME-$CI_COMMIT_BRANCH"
+
+build:
+    image: 
+        name: "golang:latest" 
+    tags:
+        - shell-docker  
+    stage: build
+    before_script:
+        - go version
+    script:
+        - go build server.go  #It will create a executable script named "server"
+    artifacts:
+        paths:
+            - ./
+    only:
+        - main
+        - dev
+
+  
+test: 
+    image: 
+        name: "golang:latest" 
+    tags:
+        - shell-docker 
+    stage: test
+    script:
+        - echo '-----Go test------'
+        #- go test
+    only:
+        - main
+        - dev
+
+
+deploy:
+    tags:
+        - shell
+    stage: deploy
+    script:
+        #- zip -r $KEY_NAME server server.go Scripts appspec.yml #Use for only this repo
+        - zip -r -X $KEY_NAME *
+        - aws s3 cp $KEY_NAME s3://$BUCKET_NAME/
+    only:
+        - main
+        - dev
+
+
+
+service:
+    tags:
+        - shell
+    stage: service
+    script:
+        - echo 'Tag=$CI_COMMIT_TAG--'
+        - codedeploy_deployment_details=$(aws deploy create-deployment --application-name $APPLICATION_NAME --deployment-group-name $DEPLOYMENTGROUP_NAME --deployment-config-name CodeDeployDefault.AllAtOnce --s3-location bucket=$BUCKET_NAME,bundleType=zip,key=$KEY_NAME)
+
+        - codedeploy_deployment_ID=$(echo $codedeploy_deployment_details| awk '{print $3}')
+        - deployment_ID=$(echo -n "$codedeploy_deployment_ID" | tail -c +2 | head -c -1)
+        - aws deploy wait deployment-successful --deployment-id $deployment_ID
+
+    #only:
+    #    - main
+    #    - dev
+    rules:
+         - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "dev"'
+           when: manual
+         - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+           when: always
+
+
